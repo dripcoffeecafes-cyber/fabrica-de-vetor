@@ -428,3 +428,9 @@ textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--linha-forte);
 .menu-forma > button.perigo { color: var(--erro); }
 .menu-cores { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 8px 4px; }
 .menu-cores button { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--linha-forte); background: var(--c); }
+
+/* ---------- seletor de arquivo: o toque cai direto no campo (funciona em app e navegador) ---------- */
+.seletor { position: relative; overflow: hidden; cursor: pointer; }
+.seletor input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.seletor:focus-within { outline: 2px solid var(--ciano); outline-offset: 2px; }
+.vazio-erro { max-width: 46ch; margin: 14px 0 0; padding: 10px 14px; border-radius: 8px; background: #fdecea; color: var(--erro); font-size: 14px; }

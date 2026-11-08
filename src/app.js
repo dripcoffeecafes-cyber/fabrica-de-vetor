@@ -32,7 +32,7 @@
       pendentes.delete(m.req);
       if (m.tipo === 'erro') p.rej(new Error(m.msg)); else p.res(m);
     };
-    worker.onerror = (e) => { avisar('O motor travou (' + (e.message || 'erro desconhecido') + '). Recarregue a página.', true); };
+    worker.onerror = (e) => { mostrarFalhaMotor(e && e.message ? e.message : 'erro ao carregar'); };
   }
   function pedir(msg, transfer, prog) {
     return new Promise((res, rej) => {
@@ -90,7 +90,7 @@
     } catch (_) {
       const im = new Image();
       im.src = url;
-      try { await im.decode(); } catch (e) { URL.revokeObjectURL(url); throw new Error('Não consegui abrir “' + file.name + '”. Use PNG, JPG ou WebP.'); }
+      try { await im.decode(); } catch (e) { URL.revokeObjectURL(url); throw new Error('Não consegui abrir “' + (file.name || 'a imagem') + '”. Use PNG, JPG ou WebP' + (/hei[cf]/i.test(file.type + file.name) ? ' (foto HEIC do iPhone: exporte como JPG).' : '.')); }
       fonte = im;
     }
     let w = fonte.width || fonte.naturalWidth, h = fonte.height || fonte.naturalHeight;
@@ -109,7 +109,8 @@
   }
 
   async function adicionarArquivos(lista) {
-    const files = Array.from(lista || []).filter((f) => /^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|bmp|avif|svg)$/i.test(f.name));
+    if (!worker) { mostrarFalhaMotor(); return; }
+    const files = Array.from(lista || []).filter((f) => f && (/^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif)$/i.test(f.name || '') || !f.type));
     if (!files.length) { avisar('Esse arquivo não é imagem. Use PNG, JPG ou WebP.', true); return; }
     let primeiraNova = null;
     for (const f of files) {
@@ -242,7 +243,7 @@
   const ponteiros = new Map();
   let arrasto = null, moveu = false, pinca = null;
   visor.addEventListener('pointerdown', (e) => {
-    if (!atual() || e.target.closest('#regua, .vazio button, #menu-forma')) return;
+    if (!atual() || e.target.closest('#regua, .vazio .seletor, #menu-forma')) return;
     visor.setPointerCapture(e.pointerId);
     ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY });
     moveu = false;
@@ -584,9 +585,11 @@
   $('#zoom-valor').addEventListener('click', zoom100);
 
   /* ---------------- entrada de arquivos ---------------- */
-  const entrada = $('#entrada');
-  entrada.addEventListener('change', () => { adicionarArquivos(entrada.files); entrada.value = ''; });
-  $$('[data-escolher]').forEach((b) => b.addEventListener('click', () => entrada.click()));
+  $$('.entrada-arquivo').forEach((inp) => inp.addEventListener('change', () => {
+    const lista = Array.from(inp.files || []);
+    inp.value = '';
+    if (lista.length) adicionarArquivos(lista);
+  }));
   const alvoSoltar = document.body;
   let contSoltar = 0;
   alvoSoltar.addEventListener('dragenter', (e) => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { contSoltar++; document.body.classList.add('soltando'); e.preventDefault(); } });
@@ -1094,19 +1097,28 @@ Responda SÓ com JSON neste formato:
   });
   $('#btn-ia-parar').addEventListener('click', () => { if (iaControle) iaControle.abort(); });
 
+  function mostrarFalhaMotor(detalhe) {
+    const p = $('#vazio-erro');
+    p.textContent = 'O motor não conseguiu iniciar aqui' + (detalhe ? ' (' + detalhe + ')' : '') + '. Abra este link no navegador do celular (Chrome ou Safari) ou no computador.';
+    p.hidden = false;
+    avisar(p.textContent, true);
+  }
+  window.addEventListener('error', (e) => { if (e && e.message) avisar('Erro: ' + e.message, true); });
+  window.addEventListener('unhandledrejection', (e) => { const r = e && e.reason; if (r && r.message && !r.code) avisar('Erro: ' + r.message, true); });
+
   /* ---------------- início ---------------- */
   try {
     iniciarWorker();
   } catch (e) {
-    avisar('Este navegador bloqueou o motor (Web Worker). Abra a página no Chrome, Edge, Firefox ou Safari atualizados.', true);
-    return;
+    worker = null;
+    mostrarFalhaMotor(e && e.message);
   }
   prepararDownloads();
   prepararSample();
   sincronizarControles();
   definirVista('vetor');
   prepararVisor(null);
-  pedir({ tipo: 'iniciar' }).then((r) => {
+  if (worker) pedir({ tipo: 'iniciar' }).then((r) => {
     est.vtracer = !!r.vtracer;
     $('#motor-status').textContent = r.vtracer ? 'Potrace + VTracer prontos' : 'Potrace pronto (VTracer bloqueado neste navegador)';
     sincronizarControles();

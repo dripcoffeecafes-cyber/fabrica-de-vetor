@@ -24,12 +24,12 @@
 <main class="app">
   <aside class="painel" aria-label="Ajustes">
     <section class="bloco" id="bloco-arquivos">
-      <div class="bloco-topo"><h2>Imagens</h2><button type="button" class="botao-texto" data-escolher>Adicionar</button></div>
-      <button type="button" class="soltar" data-escolher>
+      <div class="bloco-topo"><h2>Imagens</h2><label class="botao-texto seletor">Adicionar<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Adicionar imagens"></label></div>
+      <label class="soltar seletor">
         <strong>Solte, escolha ou cole (Ctrl+V)</strong>
         <span>PNG, JPG ou WebP. Pode mandar várias de uma vez.</span>
-      </button>
-      <input type="file" id="entrada" accept="image/*,.svg" multiple hidden>
+        <input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Escolher imagens">
+      </label>
       <ul class="lista" id="lista"></ul>
     </section>
 
@@ -200,7 +200,8 @@
         </svg>
         <h2>Solte aqui a imagem do cliente</h2>
         <p>PNG, JPG ou WebP. Também dá para colar com Ctrl+V.</p>
-        <button type="button" class="botao primario" data-escolher>Escolher imagens</button>
+        <label class="botao primario seletor">Escolher imagens<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Escolher imagens"></label>
+        <p class="vazio-erro" id="vazio-erro" hidden></p>
       </div>
       <div class="progresso" id="progresso" hidden><i></i><span id="progresso-texto">Processando…</span></div>
       <div class="menu-forma" id="menu-forma" hidden role="menu" aria-label="Ajustar forma">
