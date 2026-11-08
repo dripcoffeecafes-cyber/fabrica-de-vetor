@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vetorizador</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&display=swap" rel="stylesheet">
+<!--CSS-->
+</head>
+<body>
+<header class="topo">
+  <div class="marca">
+    <svg class="registro" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="11" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="20" r="5" fill="currentColor"/><path d="M20 1v38M1 20h38" stroke="currentColor" stroke-width="2"/></svg>
+    <div>
+      <h1>vetorizador</h1>
+      <p>Imagem do cliente vira vetor para o Illustrator. Roda no seu navegador, sem IA e sem custo por imagem.</p>
+    </div>
+  </div>
+  <button class="botao-texto" type="button" data-ajuda>Como usar</button>
+</header>
+
+<main class="app">
+  <aside class="painel" aria-label="Ajustes">
+    <section class="bloco" id="bloco-arquivos">
+      <div class="bloco-topo"><h2>Imagens</h2><button type="button" class="botao-texto" data-escolher>Adicionar</button></div>
+      <button type="button" class="soltar" data-escolher>
+        <strong>Solte, escolha ou cole (Ctrl+V)</strong>
+        <span>PNG, JPG ou WebP. Pode mandar várias de uma vez.</span>
+      </button>
+      <input type="file" id="entrada" accept="image/*,.svg" multiple hidden>
+      <ul class="lista" id="lista"></ul>
+    </section>
+
+    <section class="bloco">
+      <h2>Tipo de arte</h2>
+      <div class="segmentos" id="tipos" role="group" aria-label="Tipo de arte">
+        <button type="button" data-preset="logo">Logo</button>
+        <button type="button" data-preset="traco">Traço P&amp;B</button>
+        <button type="button" data-preset="ilustracao">Ilustração</button>
+        <button type="button" data-preset="foto">Foto/pôster</button>
+      </div>
+      <p class="dica" id="dica-tipo"></p>
+    </section>
+
+    <section class="bloco" id="bloco-cores">
+      <div class="bloco-topo"><h2>Separação de cores</h2><span class="contador" id="n-cores"></span></div>
+      <label class="campo"><span>Quantidade de cores</span>
+        <select id="ctl-cores">
+          <option value="0">Automático</option>
+          <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+          <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="10">10</option>
+          <option value="12">12</option><option value="16">16</option>
+        </select>
+      </label>
+      <div class="placas" id="placas"></div>
+      <p class="dica" id="placas-vazio">As cores detectadas aparecem aqui.</p>
+      <div class="acoes-placas">
+        <button type="button" class="botao" id="btn-conta-gotas" aria-pressed="false">Conta-gotas</button>
+        <button type="button" class="botao" id="btn-redetectar">Detectar de novo</button>
+      </div>
+      <p class="dica">Clique numa cor para trocar pela cor exata da marca. Use o conta-gotas se faltou alguma.</p>
+    </section>
+
+    <section class="bloco" id="bloco-pb" hidden>
+      <h2>Traço</h2>
+      <label class="campo"><span>Separar traço do papel</span>
+        <select id="ctl-limiar">
+          <option value="auto">Automático</option>
+          <option value="adaptativo">Foto de papel (luz irregular)</option>
+          <option value="manual">Manual</option>
+        </select>
+      </label>
+      <label class="campo" id="linha-valor-limiar" hidden><span>Limite <output id="out-valor-limiar"></output></span>
+        <input type="range" id="ctl-valor-limiar" min="10" max="245" step="1">
+        <span class="extremos"><span>menos traço</span><span>mais traço</span></span>
+      </label>
+      <label class="campo campo-linha"><span>Cor do traço</span><input type="color" id="ctl-cor-traco"></label>
+      <label class="checar"><input type="checkbox" id="ctl-inverter"> Traço claro em fundo escuro</label>
+    </section>
+
+    <section class="bloco" id="bloco-foto" hidden>
+      <h2>Pôster</h2>
+      <label class="campo"><span>Máximo de cores <output id="out-foto-cores"></output></span>
+        <input type="range" id="ctl-foto-cores" min="4" max="64" step="1">
+      </label>
+    </section>
+
+    <section class="bloco" id="bloco-fundo">
+      <h2>Fundo</h2>
+      <select id="ctl-fundo" aria-label="Fundo">
+        <option value="auto">Tirar o fundo e o miolo das letras</option>
+        <option value="externo">Tirar só o fundo de fora</option>
+        <option value="cor">Tirar essa cor da arte inteira</option>
+        <option value="manter">Manter o fundo</option>
+      </select>
+    </section>
+
+    <section class="bloco" id="bloco-ajuste">
+      <div class="bloco-topo"><h2>Ajuste fino</h2><span class="contador" id="ia-contador"></span></div>
+      <p class="dica dica-topo">Clique numa forma do vetor para deixar perfeita (círculo, elipse, retângulo, retas), trocar a cor ou apagar. Isso não usa IA.</p>
+      <div id="ia-area">
+        <label class="campo"><span>O que precisa melhorar? (opcional)</span>
+          <textarea id="ia-pedido" rows="2" placeholder="Ex.: o anel de fora ficou torto; sobrou um ponto embaixo do E"></textarea>
+        </label>
+        <div class="ia-acoes">
+          <button type="button" class="botao primario" id="btn-ia">Revisar com IA</button>
+          <button type="button" class="botao" id="btn-ia-parar" hidden>Parar</button>
+        </div>
+        <p class="dica" id="ia-nota">A IA só é chamada quando você clica. Cada revisão usa um pouco do seu plano do Claude; o resto é grátis.</p>
+        <div class="ia-resultado" id="ia-resultado" hidden>
+          <p class="ia-diagnostico" id="ia-diagnostico"></p>
+          <ul class="ia-lista" id="ia-lista"></ul>
+          <button type="button" class="botao" id="btn-ia-tudo">Aplicar todos</button>
+          <ul class="ia-dicas" id="ia-dicas"></ul>
+        </div>
+      </div>
+      <p class="dica" id="ia-indisponivel" hidden>A revisão com IA funciona quando a página é aberta pelo Claude (<a href="https://claude.ai/artifact/CRUcfR57FjZTp2zSYWfHmt" target="_blank" rel="noopener">abrir a versão do Claude</a>). Os ajustes por clique funcionam sempre.</p>
+      <div class="ops-area" id="ops-area" hidden>
+        <h3 class="sub">Ajustes aplicados</h3>
+        <ul class="ops-lista" id="ops-lista"></ul>
+        <button type="button" class="botao-texto" id="btn-ops-limpar">Desfazer todos</button>
+      </div>
+    </section>
+
+    <section class="bloco">
+      <h2>Acabamento</h2>
+      <label class="campo"><span>Suavidade das curvas <output id="out-suavidade"></output></span>
+        <input type="range" id="ctl-suavidade" min="0.6" max="1.3" step="0.05">
+        <span class="extremos"><span>cantos vivos</span><span>curvas suaves</span></span>
+      </label>
+      <label class="campo"><span>Limpar manchas <output id="out-detalhe"></output></span>
+        <input type="range" id="ctl-detalhe" min="0" max="30" step="1">
+        <span class="extremos"><span>guardar detalhes</span><span>limpar mais</span></span>
+      </label>
+      <label class="campo"><span>Qualidade</span>
+        <select id="ctl-qualidade">
+          <option value="rapida">Rápida</option>
+          <option value="normal">Normal</option>
+          <option value="alta">Alta (mais lenta)</option>
+        </select>
+      </label>
+    </section>
+
+    <details class="bloco avancado">
+      <summary>Avançado</summary>
+      <label class="campo"><span>Motor de traçado</span>
+        <select id="ctl-motor">
+          <option value="potrace">Potrace (curvas mais limpas)</option>
+          <option value="vtracer">VTracer</option>
+        </select>
+      </label>
+      <label class="campo"><span>Camadas</span>
+        <select id="ctl-camadas">
+          <option value="empilhadas">Empilhadas (impressão, sem frestas)</option>
+          <option value="recortadas">Recortadas (plotter e serigrafia)</option>
+        </select>
+      </label>
+      <label class="campo"><span>Simplificar nós <output id="out-simplificacao"></output></span>
+        <input type="range" id="ctl-simplificacao" min="0.1" max="1.5" step="0.05">
+        <span class="extremos"><span>mais fiel</span><span>menos nós</span></span>
+      </label>
+      <label class="checar"><input type="checkbox" id="ctl-ruido"> Limpar ruído de JPG</label>
+      <p class="dica" id="motor-status">Carregando os motores…</p>
+    </details>
+  </aside>
+
+  <section class="palco" aria-label="Visualização">
+    <div class="barra">
+      <div class="segmentos" id="vistas" role="group" aria-label="O que mostrar">
+        <button type="button" data-vista="original">Original</button>
+        <button type="button" data-vista="vetor">Vetor</button>
+        <button type="button" data-vista="comparar">Comparar</button>
+        <button type="button" data-vista="contornos">Contornos</button>
+      </div>
+      <div class="fundos" id="fundos-visor" role="group" aria-label="Fundo da visualização">
+        <button type="button" data-fundo="xadrez" aria-pressed="true" title="Xadrez (mostra o que ficou transparente)"><i class="amostra xadrez"></i></button>
+        <button type="button" data-fundo="branco" aria-pressed="false" title="Branco"><i class="amostra branco"></i></button>
+        <button type="button" data-fundo="escuro" aria-pressed="false" title="Escuro"><i class="amostra escuro"></i></button>
+        <button type="button" data-fundo="kraft" aria-pressed="false" title="Kraft (sachê de drip)"><i class="amostra kraft"></i></button>
+      </div>
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button type="button" id="zoom-menos" aria-label="Diminuir zoom">−</button>
+        <button type="button" id="zoom-valor" title="Ver em 100%">100%</button>
+        <button type="button" id="zoom-mais" aria-label="Aumentar zoom">+</button>
+        <button type="button" id="zoom-ajustar">Ajustar</button>
+      </div>
+    </div>
+
+    <div class="visor" id="visor" data-fundo="xadrez" data-vista="vetor">
+      <div class="camada" id="camada-original"><div class="mundo"><img id="img-original" alt="Imagem original" draggable="false"></div></div>
+      <div class="camada" id="camada-vetor"><div class="mundo"><div id="svg-vetor"></div></div></div>
+      <div class="regua" id="regua" tabindex="0" role="slider" aria-label="Divisão entre original e vetor" aria-valuemin="0" aria-valuemax="100"><span></span></div>
+      <div class="vazio" id="vazio">
+        <svg class="registro-grande" viewBox="0 0 200 200" aria-hidden="true">
+          <circle cx="100" cy="100" r="58" fill="none" stroke="currentColor" stroke-width="3"/>
+          <circle cx="100" cy="100" r="30" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M100 8v184M8 100h184" stroke="currentColor" stroke-width="3"/>
+        </svg>
+        <h2>Solte aqui a imagem do cliente</h2>
+        <p>PNG, JPG ou WebP. Também dá para colar com Ctrl+V.</p>
+        <button type="button" class="botao primario" data-escolher>Escolher imagens</button>
+      </div>
+      <div class="progresso" id="progresso" hidden><i></i><span id="progresso-texto">Processando…</span></div>
+      <div class="menu-forma" id="menu-forma" hidden role="menu" aria-label="Ajustar forma">
+        <div class="menu-topo"><span id="menu-forma-titulo">Forma</span><button type="button" class="menu-fechar" id="menu-fechar" aria-label="Fechar">×</button></div>
+        <button type="button" role="menuitem" data-acao="circulo">Círculo perfeito</button>
+        <button type="button" role="menuitem" data-acao="elipse">Elipse perfeita</button>
+        <button type="button" role="menuitem" data-acao="retangulo">Retângulo perfeito</button>
+        <button type="button" role="menuitem" data-acao="endireitar">Endireitar retas</button>
+        <button type="button" role="menuitem" data-acao="recolorir">Trocar cor…</button>
+        <button type="button" role="menuitem" data-acao="apagar" class="perigo">Apagar forma</button>
+        <div class="menu-cores" id="menu-cores" hidden></div>
+      </div>
+    </div>
+
+    <div class="rodape">
+      <dl class="estatisticas" id="estatisticas" hidden>
+        <div><dt>cores</dt><dd id="st-cores">0</dd></div>
+        <div><dt>formas</dt><dd id="st-formas">0</dd></div>
+        <div><dt>nós</dt><dd id="st-nos">0</dd></div>
+        <div><dt>arquivo</dt><dd id="st-kb">0</dd></div>
+        <div><dt>tempo</dt><dd id="st-tempo">0</dd></div>
+      </dl>
+      <div class="exportar">
+        <button type="button" class="botao" id="btn-zip" hidden>Baixar todas (.zip)</button>
+        <button type="button" class="botao" id="btn-copiar" disabled>Copiar SVG</button>
+        <button type="button" class="botao" id="btn-pdf" disabled>Baixar PDF</button>
+        <button type="button" class="botao primario" id="btn-svg" disabled>Baixar SVG</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="soltar-tela" aria-hidden="true"><span>Solte para vetorizar</span></div>
+<div class="aviso" id="aviso" role="status" aria-live="polite" hidden></div>
+
+<div class="modal" id="ajuda" hidden>
+  <div class="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="ajuda-titulo">
+    <h2 id="ajuda-titulo">Como usar</h2>
+    <ol>
+      <li>Solte a imagem do cliente (PNG, JPG ou WebP). Dá para soltar várias e baixar todas num .zip.</li>
+      <li>Escolha o tipo de arte. Logo serve para a maioria dos casos.</li>
+      <li>Confira as cores: clique numa amostra para trocar pela cor exata da marca, use × para tirar uma cor que sobrou e o conta-gotas para incluir uma que faltou.</li>
+      <li>Use Comparar e o zoom para conferir as bordas. O fundo kraft simula o sachê de drip.</li>
+      <li>Baixe o SVG e abra no Illustrator. Cada cor vem num grupo próprio.</li>
+    </ol>
+    <h3>Ajuste fino</h3>
+    <ul>
+      <li>Clique numa forma do vetor: dá para virar círculo, elipse ou retângulo perfeito, endireitar retas tortas, trocar a cor ou apagar sujeira. Não usa IA.</li>
+      <li>Revisar com IA compara o original com o vetor e sugere ajustes pontuais (cores, fundo, formas). Você escolhe quais aplicar. Escreva o problema no campo, se quiser, para ela focar nele.</li>
+      <li>Os ajustes continuam valendo se você mexer em suavidade, limpeza ou fundo depois. Dá para desfazer um por um.</li>
+    </ul>
+    <h3>No Illustrator</h3>
+    <ul>
+      <li>Arquivo &gt; Abrir o SVG (ou o PDF). As formas já vêm editáveis, sem precisar expandir.</li>
+      <li>Os grupos têm o nome da cor (ex.: cor-2_3B2314). Para trocar uma cor, selecione o grupo inteiro.</li>
+      <li>Copiar SVG também funciona: no Illustrator, Ctrl+V costuma colar direto como vetor. Se colar como texto, use o arquivo baixado.</li>
+    </ul>
+    <h3>Para sair melhor</h3>
+    <ul>
+      <li>Quanto maior e mais nítida a imagem, melhor o vetor. Peça o arquivo original ao cliente sempre que der.</li>
+      <li>Se o cliente mandou PDF, AI, EPS ou SVG, ele provavelmente já é vetor. Abra no Illustrator antes de vetorizar.</li>
+      <li>Degradê e sombra viram faixas de cor. Para logo, diminua a quantidade de cores.</li>
+      <li>Branco dentro da arte aparece num grupo próprio. Se o sachê for kraft, apague esse grupo ou mantenha para imprimir com branco.</li>
+      <li>Camadas recortadas servem para plotter de recorte e serigrafia (nada fica sobreposto).</li>
+      <li>Nada sai do seu computador: a imagem é processada aqui no navegador.</li>
+    </ul>
+    <div class="modal-rodape"><button type="button" class="botao primario" id="ajuda-fechar">Entendi</button></div>
+  </div>
+</div>
+
+<div class="modal" id="copia-manual" hidden>
+  <div class="modal-caixa" role="dialog" aria-modal="true" aria-labelledby="copia-titulo">
+    <h2 id="copia-titulo">Copie o SVG</h2>
+    <p>O navegador não deixou copiar sozinho. O código já está selecionado: use Ctrl+C (ou Cmd+C).</p>
+    <textarea readonly spellcheck="false" aria-label="Código SVG"></textarea>
+    <div class="modal-rodape"><button type="button" class="botao primario" id="copia-fechar">Fechar</button></div>
+  </div>
+</div>
+<!--APP-->
+</body>
+</html>

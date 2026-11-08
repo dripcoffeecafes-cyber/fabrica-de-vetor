@@ -1,0 +1,3 @@
+Código do traçador Potrace (porta JavaScript) copiado de @cadit-app/potrace-ts 1.3.0 (licença MIT declarada no pacote),
+baseado em potrace.js de Casper Lamboo e no algoritmo Potrace de Peter Selinger.
+Alteração: Path.js calcula limites com laço (evita estouro de argumentos em contornos grandes).

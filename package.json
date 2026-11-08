@@ -1,0 +1,21 @@
+{
+  "name": "fabrica-de-vetor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vetorizador do grupo Blooming: transforma logo e arte de cliente (PNG/JPG) em vetor para o Illustrator, sem IA. Roda no navegador e na linha de comando.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "vetorizar": "node cli.mjs"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0"
+  },
+  "devDependencies": {
+    "@visioncortex/vtracer": "1.0.0-alpha.4",
+    "esbuild": "^0.25.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
