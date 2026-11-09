@@ -82,6 +82,57 @@
 
   /* ---------------- leitura de arquivos ---------------- */
   const LADO_MAX = 3000;
+  /* ---------------- PDF: cada página vira imagem em alta resolução ---------------- */
+  const PDF_WORKER = __PDF_WORKER__;
+  const PDF_MAX_PAGINAS = 12;
+  const ehPDF = (f) => /pdf/i.test(f.type || '') || /\.pdf$/i.test(f.name || '');
+  async function comecaComPDF(f) {
+    try { return new TextDecoder().decode(new Uint8Array(await f.slice(0, 5).arrayBuffer())) === '%PDF-'; } catch (_) { return false; }
+  }
+  let pdfPorta = null;
+  function pdfjs() {
+    const lib = window.PDFJS;
+    if (!lib) throw new Error('O leitor de PDF não carregou nesta página.');
+    if (!pdfPorta) {
+      const url = URL.createObjectURL(new Blob([PDF_WORKER], { type: 'text/javascript' }));
+      pdfPorta = new Worker(url);
+      lib.GlobalWorkerOptions.workerPort = pdfPorta;
+    }
+    return lib;
+  }
+  async function paginasDoPDF(f) {
+    const nome = (f.name || 'arquivo.pdf').replace(/\.pdf$/i, '');
+    avisar('Abrindo o PDF “' + nome + '”…');
+    let doc;
+    try {
+      const lib = pdfjs();
+      doc = await lib.getDocument({ data: new Uint8Array(await f.arrayBuffer()), isEvalSupported: false, useSystemFonts: true }).promise;
+    } catch (e) {
+      if (e && e.name === 'PasswordException') throw new Error('O PDF “' + nome + '” tem senha. Peça ao cliente a versão sem senha.');
+      throw new Error('Não consegui abrir o PDF “' + nome + '”' + (e && e.message ? ' (' + e.message + ')' : '') + '.');
+    }
+    const total = doc.numPages;
+    const n = Math.min(total, PDF_MAX_PAGINAS);
+    const saida = [];
+    for (let i = 1; i <= n; i++) {
+      const pg = await doc.getPage(i);
+      const v1 = pg.getViewport({ scale: 1 });
+      // lado maior com ~3000 px e no máximo ~16 megapixels
+      let k = 3000 / Math.max(v1.width, v1.height);
+      k = Math.min(k, Math.sqrt(16e6 / (v1.width * v1.height)));
+      const vp = pg.getViewport({ scale: k });
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(vp.width)); cv.height = Math.max(1, Math.round(vp.height));
+      await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp, background: 'rgba(0,0,0,0)' }).promise;
+      pg.cleanup();
+      const blob = await new Promise((ok, erro) => cv.toBlob((b) => (b ? ok(b) : erro(new Error('Não consegui gerar a imagem da página ' + i + '.'))), 'image/png'));
+      saida.push(new File([blob], nome + (total > 1 ? '-p' + i : '') + '.png', { type: 'image/png' }));
+    }
+    doc.destroy();
+    if (total > n) avisar('O PDF tem ' + total + ' páginas; entraram as ' + n + ' primeiras.');
+    return saida;
+  }
+
   async function decodificar(file) {
     const url = URL.createObjectURL(file);
     let fonte;
@@ -110,8 +161,16 @@
 
   async function adicionarArquivos(lista) {
     if (!worker) { mostrarFalhaMotor(); return; }
-    const files = Array.from(lista || []).filter((f) => f && (/^image\//.test(f.type) || /\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif)$/i.test(f.name || '') || !f.type));
-    if (!files.length) { avisar('Esse arquivo não é imagem. Use PNG, JPG ou WebP.', true); return; }
+    let files = Array.from(lista || []).filter((f) => f && (/^image\//.test(f.type) || ehPDF(f) || /\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif)$/i.test(f.name || '') || !f.type));
+    if (!files.length) { avisar('Esse arquivo não é imagem nem PDF. Use PNG, JPG, WebP ou PDF.', true); return; }
+    const expandidos = [];
+    for (const f of files) {
+      if (ehPDF(f) || (!f.type && await comecaComPDF(f))) {
+        try { expandidos.push(...await paginasDoPDF(f)); } catch (e) { avisar(e.message, true); }
+      } else expandidos.push(f);
+    }
+    files = expandidos;
+    if (!files.length) return;
     let primeiraNova = null;
     for (const f of files) {
       try {
@@ -745,7 +804,7 @@
   const PASTA = 'application/vnd.google-apps.folder';
   const ICONE_PASTA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2h8.4A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill="currentColor"/></svg>';
   const ICONE_IMAGEM = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.8" fill="currentColor"/><path d="M5 18l5-5 3 3 2.5-2.5L19 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
-  const EXT_DRIVE = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp', 'image/heic': '.heic', 'image/avif': '.avif', 'image/svg+xml': '.svg' };
+  const EXT_DRIVE = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp', 'image/heic': '.heic', 'image/avif': '.avif', 'image/svg+xml': '.svg', 'application/pdf': '.pdf' };
   const LIMITE_DRIVE = 20 * 1024 * 1024;
   const modalDrive = $('#drive');
   const drv = { aba: 'recentes', termo: '', pilha: [], itens: [], token: null, seq: 0, carregado: false, baixando: false };
@@ -761,13 +820,13 @@
   const aspasDrive = (t) => String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   function consultaDrive() {
     const base = 'trashed = false';
-    const tipos = "(mimeType contains 'image/' or mimeType = '" + PASTA + "')";
+    const tipos = "(mimeType contains 'image/' or mimeType = 'application/pdf' or mimeType = '" + PASTA + "')";
     const topo = drv.pilha[drv.pilha.length - 1];
     if (topo) return { query: "parentId = '" + aspasDrive(topo.id) + "' and " + base + ' and ' + tipos, orderBy: 'modifiedTime desc' };
     if (drv.termo) return { query: "title contains '" + aspasDrive(drv.termo) + "' and " + base + ' and ' + tipos };
     if (drv.aba === 'meu') return { query: "parentId = 'root' and " + base + ' and ' + tipos, orderBy: 'modifiedTime desc' };
     if (drv.aba === 'compartilhados') return { query: 'sharedWithMe = true and ' + base + ' and ' + tipos, orderBy: 'modifiedTime desc' };
-    return { query: "mimeType contains 'image/' and " + base, orderBy: 'modifiedTime desc' };
+    return { query: "(mimeType contains 'image/' or mimeType = 'application/pdf') and " + base, orderBy: 'modifiedTime desc' };
   }
 
   function payloadDe(r) {
@@ -807,6 +866,7 @@
     return u;
   }
   function tipoPelosBytes(u) {
+    if (u.length > 5 && u[0] === 0x25 && u[1] === 0x50 && u[2] === 0x44 && u[3] === 0x46) return 'application/pdf';
     if (u.length > 8 && u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47) return 'image/png';
     if (u.length > 3 && u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff) return 'image/jpeg';
     if (u.length > 6 && u[0] === 0x47 && u[1] === 0x49 && u[2] === 0x46) return 'image/gif';
@@ -929,7 +989,7 @@
       drv.token = p.nextPageToken || null;
       drv.carregado = true;
       desenharDrive();
-      estadoDrive(drv.itens.length ? '' : drv.termo && !drv.pilha.length ? 'Nada com esse nome (só aparecem imagens e pastas).' : drv.pilha.length ? 'Nenhuma imagem nesta pasta.' : 'Nenhuma imagem aqui.');
+      estadoDrive(drv.itens.length ? '' : drv.termo && !drv.pilha.length ? 'Nada com esse nome (só aparecem imagens, PDFs e pastas).' : drv.pilha.length ? 'Nenhuma imagem ou PDF nesta pasta.' : 'Nenhuma imagem aqui.');
     } catch (e) {
       if (seq !== drv.seq) return;
       if (e && e.retryable && !tentativa) { await esperarDrive(e); if (seq === drv.seq) carregarDrive(mais, 1); return; }
@@ -967,9 +1027,9 @@
       const c = conteudoDe(r);
       if (!c) throw new Error('O Drive não mandou o conteúdo de “' + (f.title || 'imagem') + '”.');
       const bytes = bytesDeBase64(c.b64);
-      const tipo = tipoPelosBytes(bytes) || (/^image\//.test(c.mimeType || '') ? c.mimeType : '') || (/^image\//.test(f.mimeType || '') ? f.mimeType : '');
+      const tipo = tipoPelosBytes(bytes) || (/^(image\/|application\/pdf)/.test(c.mimeType || '') ? c.mimeType : '') || (/^(image\/|application\/pdf)/.test(f.mimeType || '') ? f.mimeType : '');
       let nome = (f.title || c.title || 'imagem do drive').trim();
-      if (!/\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif)$/i.test(nome)) nome += EXT_DRIVE[tipo] || '';
+      if (!/\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif|pdf)$/i.test(nome)) nome += EXT_DRIVE[tipo] || '';
       const arquivo = new File([bytes], nome, { type: tipo });
       estadoDrive('');
       fecharDrive();

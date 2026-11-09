@@ -1,6 +1,6 @@
 # Fábrica de Vetor
 
-Transforma logo e arte de cliente (PNG, JPG, WebP) em vetor pronto para o Illustrator, sem IA e sem custo por imagem. Tudo roda no navegador: a imagem não sai do computador.
+Transforma logo e arte de cliente (PNG, JPG, WebP ou PDF) em vetor pronto para o Illustrator, sem IA e sem custo por imagem. Tudo roda no navegador: a imagem não sai do computador.
 
 - **Usar agora:** https://dripcoffeecafes-cyber.github.io/fabrica-de-vetor/
 - **Versão com "Revisar com IA" e "Do Google Drive" (abre dentro do Claude):** https://claude.ai/artifact/CRUcfR57FjZTp2zSYWfHmt. O Drive usa o conector do Google Drive da conta de quem abre a página; na primeira vez o Claude pede para liberar.
@@ -48,3 +48,5 @@ Opções: `--tipo logo|traco|ilustracao|foto`, `--cores 0|2..16` (0 = automátic
 
 - Potrace, de Peter Selinger, pela porta em JavaScript [@cadit-app/potrace-ts](https://www.npmjs.com/package/@cadit-app/potrace-ts) (licença MIT declarada no pacote), adaptada em `src/potrace/`.
 - [VTracer](https://github.com/visioncortex/vtracer), da visioncortex, pelo WebAssembly oficial `@visioncortex/vtracer` (MIT ou Apache-2.0).
+
+PDF: cada página (até 12) vira imagem de ~3000 px e é vetorizada. Leitor de PDF: pdf.js (Mozilla, Apache-2.0), embutido na página.

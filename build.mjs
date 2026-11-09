@@ -37,14 +37,26 @@ let codigoWorker = w.outputFiles[0].text;
 if (!codigoWorker.includes('__WASM_B64__')) throw new Error('marcador do WASM sumiu');
 codigoWorker = codigoWorker.replace('__WASM_B64__', fs.readFileSync(caminho('src/gen/vtracer.wasm')).toString('base64'));
 
+// 2b) pdf.js (Apache-2.0): leitor exposto em window.PDFJS e o worker dele como texto
+const pdfMain = (await esbuild.build({
+  entryPoints: [caminho('src/pdf.js')], bundle: true, format: 'iife', minify: true, target: 'es2020', write: false, legalComments: 'inline',
+  define: { 'import.meta.url': '"about:blank"' }, logLevel: 'error',
+})).outputFiles[0].text;
+const pdfWorker = (await esbuild.build({
+  entryPoints: [caminho('node_modules/pdfjs-dist/build/pdf.worker.min.mjs')], bundle: true, format: 'iife', minify: true, target: 'es2020', write: false, legalComments: 'inline',
+  define: { 'import.meta.url': '"about:blank"' }, logLevel: 'error',
+})).outputFiles[0].text;
+
 // 3) Interface + CSS dentro do HTML
 const escapar = (s) => s.replace(/<\/script/gi, '<\\/script').replace(/<!--/g, '\\u003C!--').replace(/<script/gi, '\\u003Cscript');
 let app = fs.readFileSync(caminho('src/app.js'), 'utf8');
 if (!app.includes('__CODIGO_WORKER__')) throw new Error('marcador do worker sumiu');
 app = app.replace('__CODIGO_WORKER__', () => escapar(JSON.stringify(codigoWorker)));
+if (!app.includes('__PDF_WORKER__')) throw new Error('marcador do worker do PDF sumiu');
+app = app.replace('__PDF_WORKER__', () => escapar(JSON.stringify(pdfWorker)));
 let html = fs.readFileSync(caminho('src/index.html'), 'utf8');
 html = html.replace('<!--CSS-->', () => '<style>' + fs.readFileSync(caminho('src/app.css'), 'utf8') + '</style>');
-html = html.replace('<!--APP-->', () => '<script>' + app + '</script>');
+html = html.replace('<!--APP-->', () => '<script>' + escapar(pdfMain) + '</script>\n<script>' + app + '</script>');
 if (/<!--CSS-->|<!--APP-->/.test(html)) throw new Error('marcadores não substituídos');
 fs.writeFileSync(caminho('index.html'), html);
 console.log('index.html', (html.length / 1024).toFixed(0), 'KB');

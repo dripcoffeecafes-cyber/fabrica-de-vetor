@@ -24,11 +24,11 @@
 <main class="app">
   <aside class="painel" aria-label="Ajustes">
     <section class="bloco" id="bloco-arquivos">
-      <div class="bloco-topo"><h2>Imagens</h2><div class="bloco-topo-acoes"><button type="button" class="botao-texto" data-drive hidden>Drive</button><label class="botao-texto seletor">Adicionar<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Adicionar imagens"></label></div></div>
+      <div class="bloco-topo"><h2>Imagens</h2><div class="bloco-topo-acoes"><button type="button" class="botao-texto" data-drive hidden>Drive</button><label class="botao-texto seletor">Adicionar<input type="file" class="entrada-arquivo" accept="image/*,application/pdf,.pdf" multiple aria-label="Adicionar imagens"></label></div></div>
       <label class="soltar seletor">
         <strong>Solte, escolha ou cole (Ctrl+V)</strong>
-        <span>PNG, JPG ou WebP. Pode mandar várias de uma vez.</span>
-        <input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Escolher imagens">
+        <span>PNG, JPG, WebP ou PDF. Pode mandar várias de uma vez.</span>
+        <input type="file" class="entrada-arquivo" accept="image/*,application/pdf,.pdf" multiple aria-label="Escolher imagens">
       </label>
       <ul class="lista" id="lista"></ul>
     </section>
@@ -199,9 +199,9 @@
           <path d="M100 8v184M8 100h184" stroke="currentColor" stroke-width="3"/>
         </svg>
         <h2>Solte aqui a imagem do cliente</h2>
-        <p>PNG, JPG ou WebP. Também dá para colar com Ctrl+V.</p>
+        <p>PNG, JPG, WebP ou PDF. Também dá para colar com Ctrl+V.</p>
         <div class="vazio-acoes">
-          <label class="botao primario seletor">Escolher imagens<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Escolher imagens"></label>
+          <label class="botao primario seletor">Escolher imagens<input type="file" class="entrada-arquivo" accept="image/*,application/pdf,.pdf" multiple aria-label="Escolher imagens"></label>
           <button type="button" class="botao botao-drive" data-drive hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Do Google Drive</button>
         </div>
         <p class="vazio-erro" id="vazio-erro" hidden></p>
@@ -266,7 +266,7 @@
     <h3>Para sair melhor</h3>
     <ul>
       <li>Quanto maior e mais nítida a imagem, melhor o vetor. Peça o arquivo original ao cliente sempre que der.</li>
-      <li>Se o cliente mandou PDF, AI, EPS ou SVG, ele provavelmente já é vetor. Abra no Illustrator antes de vetorizar.</li>
+      <li>Se o cliente mandou PDF, AI, EPS ou SVG, ele pode já ser vetor: no computador, abra no Illustrator antes. PDF também entra aqui: cada página vira uma imagem em alta resolução (até 12 páginas) e é vetorizada.</li>
       <li>Degradê e sombra viram faixas de cor. Para logo, diminua a quantidade de cores.</li>
       <li>Branco dentro da arte aparece num grupo próprio. Se o sachê for kraft, apague esse grupo ou mantenha para imprimir com branco.</li>
       <li>Camadas recortadas servem para plotter de recorte e serigrafia (nada fica sobreposto).</li>
