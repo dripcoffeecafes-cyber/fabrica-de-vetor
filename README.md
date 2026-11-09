@@ -50,3 +50,10 @@ Opções: `--tipo logo|traco|ilustracao|foto`, `--cores 0|2..16` (0 = automátic
 - [VTracer](https://github.com/visioncortex/vtracer), da visioncortex, pelo WebAssembly oficial `@visioncortex/vtracer` (MIT ou Apache-2.0).
 
 PDF: cada página (até 12) vira imagem de ~3000 px e é vetorizada. Leitor de PDF: pdf.js (Mozilla, Apache-2.0), embutido na página.
+
+## Ferramentas para o fluxo pelo chat
+
+- `ferramentas/pdf_partes.py arquivo.pdf --saida pasta`: separa o PDF em vetor original (SVG por página) e imagens em pixel embutidas.
+- `ferramentas/redesenhar_traco.py imagem.png --cor "#HEX" ...`: redesenha traço (letra cursiva, linha, ícone de linha) pela linha central, em vez de contornar o pixel. Texto pequeno de fonte deve ser trocado por fonte de verdade.
+
+Python: `pip install pymupdf numpy scipy scikit-image skan pillow fonttools`.
