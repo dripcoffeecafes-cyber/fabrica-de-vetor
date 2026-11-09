@@ -3,7 +3,7 @@
 Transforma logo e arte de cliente (PNG, JPG, WebP) em vetor pronto para o Illustrator, sem IA e sem custo por imagem. Tudo roda no navegador: a imagem não sai do computador.
 
 - **Usar agora:** https://dripcoffeecafes-cyber.github.io/fabrica-de-vetor/
-- **Versão com "Revisar com IA" (abre dentro do Claude):** https://claude.ai/artifact/CRUcfR57FjZTp2zSYWfHmt
+- **Versão com "Revisar com IA" e "Do Google Drive" (abre dentro do Claude):** https://claude.ai/artifact/CRUcfR57FjZTp2zSYWfHmt. O Drive usa o conector do Google Drive da conta de quem abre a página; na primeira vez o Claude pede para liberar.
 
 > Não coloque arte de cliente neste repositório. Ele é público.
 

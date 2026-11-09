@@ -434,3 +434,35 @@ textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--linha-forte);
 .seletor input[type="file"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
 .seletor:focus-within { outline: 2px solid var(--ciano); outline-offset: 2px; }
 .vazio-erro { max-width: 46ch; margin: 14px 0 0; padding: 10px 14px; border-radius: 8px; background: #fdecea; color: var(--erro); font-size: 14px; }
+
+/* ---------- Google Drive (conector do Claude) ---------- */
+.bloco-topo-acoes { display: flex; gap: 6px; }
+.vazio-acoes { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.botao-drive svg { width: 19px; height: 19px; }
+.drive-caixa { display: flex; flex-direction: column; width: min(560px, 100%); height: min(680px, calc(100vh - 32px)); height: min(680px, calc(100dvh - 32px)); padding: 18px 18px 14px; overflow: hidden; }
+.drive-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.drive-cabeca h2 { margin: 0; font-size: 20px; }
+.drive-busca { display: flex; gap: 8px; }
+.drive-busca input { flex: 1; min-width: 0; min-height: 40px; padding: 0 12px; border: 1px solid var(--linha-forte); border-radius: 8px; background: #fff; font-size: 16px; }
+.drive-busca input:focus { outline: 2px solid var(--ciano); outline-offset: 1px; }
+.drive-abas { display: flex; gap: 6px; margin: 10px 0 4px; overflow-x: auto; }
+.drive-abas .botao { min-height: 32px; padding: 0 12px; font-size: 13.5px; }
+.drive-caminho { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 6px 0 2px; font-size: 14px; font-weight: 640; }
+.drive-caminho span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drive-estado { margin: 8px 2px 2px; font-size: 13.5px; color: var(--suave); }
+.drive-estado.erro { color: var(--erro); }
+.drive-estado .botao-texto { margin-left: 6px; vertical-align: middle; }
+.drive-lista { flex: 1; min-height: 0; margin: 4px -6px 0; padding: 0; overflow-y: auto; list-style: none; -webkit-overflow-scrolling: touch; }
+.drive-lista.ocupada { pointer-events: none; }
+.drive-item { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; padding: 10px 8px; border: 0; border-radius: 8px; background: none; text-align: left; cursor: pointer; }
+.drive-item:hover, .drive-item:focus-visible { background: #f3f5f7; }
+.drive-item svg { width: 24px; height: 24px; color: var(--suave); }
+.drive-item.pasta svg { color: var(--kraft); }
+.drive-item.baixando { background: var(--ciano-claro); }
+.drive-nome { display: block; overflow: hidden; font-size: 14.5px; font-weight: 560; text-overflow: ellipsis; white-space: nowrap; }
+.drive-meta { display: block; font-size: 12.5px; color: var(--suave); }
+#drive-mais { align-self: center; margin-top: 8px; }
+@media (max-width: 640px) {
+  #drive.modal { padding: 0; place-items: end stretch; }
+  .drive-caixa { width: 100%; height: 86vh; height: 86dvh; border-radius: 14px 14px 0 0; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+}

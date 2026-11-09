@@ -24,7 +24,7 @@
 <main class="app">
   <aside class="painel" aria-label="Ajustes">
     <section class="bloco" id="bloco-arquivos">
-      <div class="bloco-topo"><h2>Imagens</h2><label class="botao-texto seletor">Adicionar<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Adicionar imagens"></label></div>
+      <div class="bloco-topo"><h2>Imagens</h2><div class="bloco-topo-acoes"><button type="button" class="botao-texto" data-drive hidden>Drive</button><label class="botao-texto seletor">Adicionar<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Adicionar imagens"></label></div></div>
       <label class="soltar seletor">
         <strong>Solte, escolha ou cole (Ctrl+V)</strong>
         <span>PNG, JPG ou WebP. Pode mandar várias de uma vez.</span>
@@ -200,7 +200,10 @@
         </svg>
         <h2>Solte aqui a imagem do cliente</h2>
         <p>PNG, JPG ou WebP. Também dá para colar com Ctrl+V.</p>
-        <label class="botao primario seletor">Escolher imagens<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Escolher imagens"></label>
+        <div class="vazio-acoes">
+          <label class="botao primario seletor">Escolher imagens<input type="file" class="entrada-arquivo" accept="image/*" multiple aria-label="Escolher imagens"></label>
+          <button type="button" class="botao botao-drive" data-drive hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18.5h10.5a4 4 0 0 0 .4-7.98A6 6 0 0 0 6.3 9.6 4.5 4.5 0 0 0 7 18.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Do Google Drive</button>
+        </div>
         <p class="vazio-erro" id="vazio-erro" hidden></p>
       </div>
       <div class="progresso" id="progresso" hidden><i></i><span id="progresso-texto">Processando…</span></div>
@@ -242,6 +245,7 @@
     <h2 id="ajuda-titulo">Como usar</h2>
     <ol>
       <li>Solte a imagem do cliente (PNG, JPG ou WebP). Dá para soltar várias e baixar todas num .zip.</li>
+      <li>No Claude, o botão Do Google Drive mostra as imagens do seu Drive: recentes, pastas, compartilhadas ou busca pelo nome. Na primeira vez o Claude pede para liberar o acesso.</li>
       <li>Escolha o tipo de arte. Logo serve para a maioria dos casos.</li>
       <li>Confira as cores: clique numa amostra para trocar pela cor exata da marca, use × para tirar uma cor que sobrou e o conta-gotas para incluir uma que faltou.</li>
       <li>Use Comparar e o zoom para conferir as bordas. O fundo kraft simula o sachê de drip.</li>
@@ -269,6 +273,28 @@
       <li>Nada sai do seu computador: a imagem é processada aqui no navegador.</li>
     </ul>
     <div class="modal-rodape"><button type="button" class="botao primario" id="ajuda-fechar">Entendi</button></div>
+  </div>
+</div>
+
+<div class="modal" id="drive" hidden>
+  <div class="modal-caixa drive-caixa" role="dialog" aria-modal="true" aria-labelledby="drive-titulo">
+    <div class="drive-cabeca">
+      <h2 id="drive-titulo">Imagens do Google Drive</h2>
+      <button type="button" class="botao-texto" id="drive-fechar">Fechar</button>
+    </div>
+    <form class="drive-busca" id="drive-busca" role="search">
+      <input type="search" id="drive-termo" placeholder="Nome do arquivo ou da pasta" enterkeyhint="search" autocomplete="off" aria-label="Buscar no Google Drive">
+      <button type="submit" class="botao">Buscar</button>
+    </form>
+    <div class="drive-abas">
+      <button type="button" class="botao" data-drive-aba="recentes" aria-pressed="true">Recentes</button>
+      <button type="button" class="botao" data-drive-aba="meu" aria-pressed="false">Meu Drive</button>
+      <button type="button" class="botao" data-drive-aba="compartilhados" aria-pressed="false">Compartilhados</button>
+    </div>
+    <div class="drive-caminho" id="drive-caminho" hidden><button type="button" class="botao-texto" id="drive-voltar">‹ Voltar</button><span></span></div>
+    <p class="drive-estado" id="drive-estado" hidden></p>
+    <ul class="drive-lista" id="drive-lista"></ul>
+    <button type="button" class="botao" id="drive-mais" hidden>Carregar mais</button>
   </div>
 </div>
 

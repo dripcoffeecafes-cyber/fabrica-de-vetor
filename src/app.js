@@ -740,6 +740,279 @@
     return new Blob([...partes, ...central, new Uint8Array(fim.buffer)], { type: 'application/zip' });
   }
 
+  /* ---------------- Google Drive (conector do Claude) ---------------- */
+  const DRIVE = 'Google Drive';
+  const PASTA = 'application/vnd.google-apps.folder';
+  const ICONE_PASTA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2 2h8.4A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z" fill="currentColor"/></svg>';
+  const ICONE_IMAGEM = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.8" fill="currentColor"/><path d="M5 18l5-5 3 3 2.5-2.5L19 17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  const EXT_DRIVE = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.bmp', 'image/heic': '.heic', 'image/avif': '.avif', 'image/svg+xml': '.svg' };
+  const LIMITE_DRIVE = 20 * 1024 * 1024;
+  const modalDrive = $('#drive');
+  const drv = { aba: 'recentes', termo: '', pilha: [], itens: [], token: null, seq: 0, carregado: false, baixando: false };
+  let nsMcp = Promise.resolve(null);
+
+  function prepararDrive() {
+    try {
+      if (window.claude && typeof window.claude.use === 'function') nsMcp = window.claude.use('mcp').then((ns) => ns || null).catch(() => null);
+    } catch (_) { nsMcp = Promise.resolve(null); }
+    nsMcp.then((ns) => { $$('[data-drive]').forEach((b) => { b.hidden = !ns; }); });
+  }
+
+  const aspasDrive = (t) => String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  function consultaDrive() {
+    const base = 'trashed = false';
+    const tipos = "(mimeType contains 'image/' or mimeType = '" + PASTA + "')";
+    const topo = drv.pilha[drv.pilha.length - 1];
+    if (topo) return { query: "parentId = '" + aspasDrive(topo.id) + "' and " + base + ' and ' + tipos, orderBy: 'modifiedTime desc' };
+    if (drv.termo) return { query: "title contains '" + aspasDrive(drv.termo) + "' and " + base + ' and ' + tipos };
+    if (drv.aba === 'meu') return { query: "parentId = 'root' and " + base + ' and ' + tipos, orderBy: 'modifiedTime desc' };
+    if (drv.aba === 'compartilhados') return { query: 'sharedWithMe = true and ' + base + ' and ' + tipos, orderBy: 'modifiedTime desc' };
+    return { query: "mimeType contains 'image/' and " + base, orderBy: 'modifiedTime desc' };
+  }
+
+  function payloadDe(r) {
+    if (!r) return null;
+    let p = r.payload !== undefined ? r.payload : r.structuredContent;
+    if (p === undefined && Array.isArray(r.content)) { const t = r.content.find((b) => b && b.type === 'text'); p = t ? t.text : undefined; }
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch (_) { /* texto puro */ } }
+    return p;
+  }
+  function conteudoDe(r) {
+    const cands = [payloadDe(r), r && r.structuredContent];
+    for (const b of (r && r.content) || []) {
+      if (!b) continue;
+      if (b.type === 'image' && b.data) cands.push({ content: b.data, mimeType: b.mimeType });
+      else if (b.type === 'resource' && b.resource && b.resource.blob) cands.push({ content: b.resource.blob, mimeType: b.resource.mimeType });
+      else if (b.type === 'text' && typeof b.text === 'string') { try { cands.push(JSON.parse(b.text)); } catch (_) { cands.push(b.text); } }
+    }
+    for (const c of cands) {
+      if (!c) continue;
+      if (typeof c === 'string') {
+        if (c.length >= 16 && /^(data:[^,]*,)?[A-Za-z0-9+/_=\-\s]+$/.test(c.slice(0, 400))) return { b64: c };
+        continue;
+      }
+      if (typeof c === 'object') {
+        const t = c.content || c.data || c.base64 || c.blob || c.base64Content || c.fileContent;
+        if (typeof t === 'string' && t.length >= 8) return { b64: t, mimeType: c.mimeType || c.contentMimeType, title: c.title || c.name };
+      }
+    }
+    return null;
+  }
+  function bytesDeBase64(t) {
+    t = t.replace(/^data:[^,]*,/, '').replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/').replace(/=+$/, '');
+    while (t.length % 4) t += '=';
+    const bin = atob(t);
+    const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  }
+  function tipoPelosBytes(u) {
+    if (u.length > 8 && u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4e && u[3] === 0x47) return 'image/png';
+    if (u.length > 3 && u[0] === 0xff && u[1] === 0xd8 && u[2] === 0xff) return 'image/jpeg';
+    if (u.length > 6 && u[0] === 0x47 && u[1] === 0x49 && u[2] === 0x46) return 'image/gif';
+    if (u.length > 12 && u[0] === 0x52 && u[1] === 0x49 && u[2] === 0x46 && u[3] === 0x46 && u[8] === 0x57 && u[9] === 0x45 && u[10] === 0x42 && u[11] === 0x50) return 'image/webp';
+    if (u.length > 2 && u[0] === 0x42 && u[1] === 0x4d) return 'image/bmp';
+    if (u.length > 12) {
+      const f = String.fromCharCode.apply(null, u.subarray(4, 12));
+      if (/^ftypavi[fs]/.test(f)) return 'image/avif';
+      if (/^ftyp(heic|heix|hevc|heim|heis|mif1|msf1)/.test(f)) return 'image/heic';
+    }
+    const ini = new TextDecoder().decode(u.subarray(0, 2048));
+    if (/^\s*(<\?xml|<svg|<!DOCTYPE svg|<!--)/i.test(ini) && /<svg[\s>]/i.test(ini)) return 'image/svg+xml';
+    return '';
+  }
+  function quandoDrive(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const hoje = new Date();
+    const ontem = new Date(hoje); ontem.setDate(hoje.getDate() - 1);
+    const igual = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (igual(d, hoje)) return 'hoje, ' + hora;
+    if (igual(d, ontem)) return 'ontem, ' + hora;
+    const op = { day: '2-digit', month: '2-digit' };
+    if (d.getFullYear() !== hoje.getFullYear()) op.year = 'numeric';
+    return d.toLocaleDateString('pt-BR', op);
+  }
+  function tamanhoDrive(n) {
+    n = Number(n);
+    if (!n) return '';
+    return n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+  }
+
+  function estadoDrive(txt, erro, repetir) {
+    const p = $('#drive-estado');
+    p.textContent = txt || '';
+    p.classList.toggle('erro', !!erro);
+    if (txt && repetir) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'botao-texto';
+      b.textContent = 'Tentar de novo';
+      b.addEventListener('click', repetir);
+      p.appendChild(b);
+    }
+    p.hidden = !txt;
+  }
+  const NEGADO_DRIVE = ['needs_reauth', 'server_not_connected', 'selection_required', 'blocked_by_policy', 'not_in_manifest', 'approval_required', 'consent_required', 'not_granted', 'capability_disabled', 'capability_removed'];
+  const SEM_REPETIR_DRIVE = ['needs_reauth', 'server_not_connected', 'blocked_by_policy', 'not_granted', 'capability_disabled', 'capability_removed', 'user_changed'];
+  function msgErroDrive(e) {
+    const c = e && e.code;
+    switch (c) {
+      case 'server_not_connected': case 'server_not_found': return 'O Google Drive não está conectado ao seu Claude. Conecte em Configurações → Conectores e abra esta página de novo.';
+      case 'needs_reauth': return 'A conexão com o Google Drive expirou. Reconecte em Configurações → Conectores do Claude e tente de novo.';
+      case 'selection_required': return 'Você tem mais de um Google Drive conectado. Escolha qual usar no aviso do Claude e tente de novo.';
+      case 'not_in_manifest': case 'approval_required': case 'consent_required': return 'O Drive ainda não foi liberado para esta página. Toque em Tentar de novo e escolha Permitir no aviso do Claude.';
+      case 'blocked_by_policy': return 'A sua organização bloqueou o Google Drive nesta página.';
+      case 'server_unavailable': case 'rate_limited': return 'O Google Drive não respondeu agora. Espere uns segundos e tente de novo.';
+      case 'tool_error': return 'O Drive recusou o pedido' + (e.message ? ': ' + String(e.message).slice(0, 160) : '.');
+      case 'not_granted': case 'capability_disabled': case 'capability_removed': return 'Esta visualização não consegue usar o Drive. Abra a página pelo app ou pelo site do Claude.';
+      case 'user_changed': return 'A conta do Claude mudou. Recarregue a página.';
+      case 'cancelled': return '';
+      default: return 'Não consegui falar com o Google Drive' + (c ? ' (' + c + ')' : '') + '. Tente de novo.';
+    }
+  }
+  function erroDrive(e, repetir) {
+    const c = e && e.code;
+    if (NEGADO_DRIVE.includes(c)) { drv.itens = []; drv.token = null; drv.carregado = false; desenharDrive(); }
+    const msg = msgErroDrive(e);
+    estadoDrive(msg, true, SEM_REPETIR_DRIVE.includes(c) ? null : repetir);
+  }
+  const esperarDrive = (e) => new Promise((ok) => setTimeout(ok, Math.min(60000, (e && e.retryAfterMs) || 600 + Math.random() * 900)));
+
+  function desenharDrive() {
+    const ul = $('#drive-lista');
+    ul.innerHTML = '';
+    const pastas = drv.itens.filter((f) => f.mimeType === PASTA);
+    const imagens = drv.itens.filter((f) => f.mimeType !== PASTA);
+    for (const f of pastas.concat(imagens)) {
+      const pasta = f.mimeType === PASTA;
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'drive-item' + (pasta ? ' pasta' : '');
+      b.dataset.id = f.id;
+      b.innerHTML = (pasta ? ICONE_PASTA : ICONE_IMAGEM) + '<span><span class="drive-nome"></span><span class="drive-meta"></span></span>';
+      $('.drive-nome', b).textContent = f.title || '(sem nome)';
+      $('.drive-meta', b).textContent = pasta ? 'Pasta' : [quandoDrive(f.modifiedTime), tamanhoDrive(f.fileSize)].filter(Boolean).join(' · ');
+      b.addEventListener('click', () => (pasta ? abrirPastaDrive(f) : importarDoDrive(f, b)));
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    const topo = drv.pilha[drv.pilha.length - 1];
+    const cam = $('#drive-caminho');
+    cam.hidden = !(topo || drv.termo);
+    $('span', cam).textContent = topo ? topo.title : 'Busca: “' + drv.termo + '”';
+    $$('[data-drive-aba]').forEach((b) => b.setAttribute('aria-pressed', String(!topo && !drv.termo && b.dataset.driveAba === drv.aba)));
+    $('#drive-mais').hidden = !drv.token;
+  }
+
+  async function carregarDrive(mais, tentativa = 0) {
+    const ns = await nsMcp;
+    if (!ns) { estadoDrive('O Google Drive só funciona com a página aberta no Claude.', true); return; }
+    const seq = ++drv.seq;
+    const q = consultaDrive();
+    const input = { query: q.query, pageSize: 30, excludeContentSnippets: true };
+    if (q.orderBy) input.orderBy = q.orderBy;
+    if (mais && drv.token) input.pageToken = drv.token;
+    if (!mais) { drv.itens = []; drv.token = null; desenharDrive(); $('#drive-lista').scrollTop = 0; }
+    $('#drive-mais').hidden = true;
+    estadoDrive(tentativa ? 'O Drive demorou. Tentando de novo…' : mais ? 'Carregando mais…' : drv.carregado ? 'Carregando…' : 'Carregando… Na primeira vez o Claude pede para liberar o Drive.');
+    try {
+      const r = await ns.callTool(DRIVE, 'search_files', input);
+      if (seq !== drv.seq) return;
+      const p = payloadDe(r) || {};
+      const vistos = new Set(drv.itens.map((f) => f.id));
+      for (const f of Array.isArray(p.files) ? p.files : []) {
+        if (f && f.id && !vistos.has(f.id)) { drv.itens.push(f); vistos.add(f.id); }
+      }
+      drv.token = p.nextPageToken || null;
+      drv.carregado = true;
+      desenharDrive();
+      estadoDrive(drv.itens.length ? '' : drv.termo && !drv.pilha.length ? 'Nada com esse nome (só aparecem imagens e pastas).' : drv.pilha.length ? 'Nenhuma imagem nesta pasta.' : 'Nenhuma imagem aqui.');
+    } catch (e) {
+      if (seq !== drv.seq) return;
+      if (e && e.retryable && !tentativa) { await esperarDrive(e); if (seq === drv.seq) carregarDrive(mais, 1); return; }
+      erroDrive(e, () => carregarDrive(mais));
+    }
+  }
+
+  function abrirPastaDrive(f) {
+    drv.pilha.push({ id: f.id, title: f.title || 'Pasta' });
+    carregarDrive(false);
+  }
+
+  async function importarDoDrive(f, botao, tentativa = 0) {
+    if (drv.baixando && !tentativa) return;
+    const ns = await nsMcp;
+    if (!ns) return;
+    if (Number(f.fileSize) > LIMITE_DRIVE) {
+      estadoDrive('“' + f.title + '” tem ' + tamanhoDrive(f.fileSize) + '. Aqui o limite é 20 MB: salve no celular e use Escolher imagens.', true);
+      return;
+    }
+    const ul = $('#drive-lista');
+    drv.baixando = true;
+    ul.classList.add('ocupada');
+    botao.classList.add('baixando');
+    estadoDrive((tentativa ? 'O Drive demorou. Tentando de novo: ' : 'Baixando ') + '“' + (f.title || 'imagem') + '”…');
+    try {
+      let r;
+      try {
+        r = await ns.callTool(DRIVE, 'download_file_content', { fileId: f.id });
+      } catch (e) {
+        if (e && e.retryable && !tentativa) { await esperarDrive(e); return await importarDoDrive(f, botao, 1); }
+        erroDrive(e, () => importarDoDrive(f, botao));
+        return;
+      }
+      const c = conteudoDe(r);
+      if (!c) throw new Error('O Drive não mandou o conteúdo de “' + (f.title || 'imagem') + '”.');
+      const bytes = bytesDeBase64(c.b64);
+      const tipo = tipoPelosBytes(bytes) || (/^image\//.test(c.mimeType || '') ? c.mimeType : '') || (/^image\//.test(f.mimeType || '') ? f.mimeType : '');
+      let nome = (f.title || c.title || 'imagem do drive').trim();
+      if (!/\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif)$/i.test(nome)) nome += EXT_DRIVE[tipo] || '';
+      const arquivo = new File([bytes], nome, { type: tipo });
+      estadoDrive('');
+      fecharDrive();
+      await adicionarArquivos([arquivo]);
+    } catch (e) {
+      estadoDrive(e && e.message ? e.message : 'Não consegui baixar esse arquivo.', true, () => importarDoDrive(f, botao));
+    } finally {
+      drv.baixando = false;
+      ul.classList.remove('ocupada');
+      botao.classList.remove('baixando');
+    }
+  }
+
+  function abrirDrive() {
+    modalDrive.hidden = false;
+    if (!drv.carregado && !drv.baixando) carregarDrive(false);
+    if (window.matchMedia && matchMedia('(pointer: fine)').matches) $('#drive-termo').focus();
+  }
+  function fecharDrive() { modalDrive.hidden = true; }
+  $$('[data-drive]').forEach((b) => b.addEventListener('click', abrirDrive));
+  $('#drive-fechar').addEventListener('click', fecharDrive);
+  modalDrive.addEventListener('click', (e) => { if (e.target === modalDrive) fecharDrive(); });
+  $('#drive-busca').addEventListener('submit', (e) => {
+    e.preventDefault();
+    drv.termo = $('#drive-termo').value.trim();
+    drv.pilha = [];
+    $('#drive-termo').blur();
+    carregarDrive(false);
+  });
+  $$('[data-drive-aba]').forEach((b) => b.addEventListener('click', () => {
+    drv.aba = b.dataset.driveAba;
+    drv.termo = '';
+    drv.pilha = [];
+    $('#drive-termo').value = '';
+    carregarDrive(false);
+  }));
+  $('#drive-voltar').addEventListener('click', () => {
+    if (drv.pilha.length) drv.pilha.pop();
+    else { drv.termo = ''; $('#drive-termo').value = ''; }
+    carregarDrive(false);
+  });
+  $('#drive-mais').addEventListener('click', () => carregarDrive(true));
+
   /* ---------------- avisos e ajuda ---------------- */
   let avisoTimer = null;
   function avisar(txt, erro = false) {
@@ -755,7 +1028,7 @@
   $('#ajuda-fechar').addEventListener('click', () => { ajuda.hidden = true; });
   ajuda.addEventListener('click', (e) => { if (e.target === ajuda) ajuda.hidden = true; });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { ajuda.hidden = true; $('#copia-manual').hidden = true; fecharMenuForma(); if (est.contaGotas) alternarContaGotas(false); }
+    if (e.key === 'Escape') { ajuda.hidden = true; $('#copia-manual').hidden = true; fecharDrive(); fecharMenuForma(); if (est.contaGotas) alternarContaGotas(false); }
   });
 
   /* ---------------- ajuste fino: formas (sem IA) ---------------- */
@@ -1115,6 +1388,7 @@ Responda SÓ com JSON neste formato:
   }
   prepararDownloads();
   prepararSample();
+  prepararDrive();
   sincronizarControles();
   definirVista('vetor');
   prepararVisor(null);
