@@ -54,6 +54,7 @@ PDF: cada página (até 12) vira imagem de ~3000 px e é vetorizada. Leitor de P
 ## Ferramentas para o fluxo pelo chat
 
 - `ferramentas/pdf_partes.py arquivo.pdf --saida pasta`: separa o PDF em vetor original (SVG por página) e imagens em pixel embutidas.
+- `ferramentas/limpar_contorno.py imagem.png [--caixa x0,y0,x1,y1] [--sigma 0.55] [--diag 8] --saida pasta`: contorno limpo mantendo o desenho original: retas travadas (sem deformação), curvas contínuas tangentes às retas, cantos vivos preservados. Formas grandes: `--sigma 0.8 --diag 25`. Também importável (`limpar()`, `path_para_d()`) para montar logos com skia-pathops. Dependências: numpy, scipy, scikit-image, pillow, skia-pathops, fonttools.
 - `ferramentas/redesenhar_traco.py imagem.png --cor "#HEX" ...`: redesenha traço (letra cursiva, linha, ícone de linha) pela linha central, em vez de contornar o pixel. Texto pequeno de fonte deve ser trocado por fonte de verdade.
 
 Python: `pip install pymupdf numpy scipy scikit-image skan pillow fonttools`.
